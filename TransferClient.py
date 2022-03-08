@@ -1,5 +1,10 @@
 import socket
 
+# Dokumente:
+#
+# S:\Entwicklung\Allgemein\Datenblätter\Kartentechnik\Kathrein\Programmierung\RRU4 API and Demo V2.56.00\API\Headers
+# S:\Entwicklung\Allgemein\Datenblätter\Kartentechnik\Kathrein\Programmierung
+
 
 def main():
     reader = "192.168.3.46"
@@ -15,14 +20,27 @@ def main():
             s.send(message)
 
             response = s.recv(buffer)
-            b = [hex(int(i)) for i in response]
-            print(b)
-#            print(repr(b))
+            command_id, command_data = createResponseOutput(response)
+            print(f"Command {command_id} returned {command_data}")
+
             break
     except:
-        print("Disconnected!")
+        print("Connection Failed!")
     finally:
         s.close()
+        print("Disconnected!")
+
+
+def createResponseOutput(response):
+    handover = [hex(int(i)) for i in response]
+    for i in range(0, 4, 1):
+        handover.pop(0)
+    handover.pop(-1)
+    handover.pop(-1)
+
+    command_id = hex(((int(handover[1], base=16) << 8) ^ (2 ** 15)) + int(handover[0], base=16))
+    command_data = handover[2:]
+    return command_id, command_data
 
 
 if __name__ == '__main__':
