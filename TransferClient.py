@@ -37,10 +37,21 @@ def createResponseOutput(response):
         handover.pop(0)
     handover.pop(-1)
     handover.pop(-1)
-
     command_id = hex(((int(handover[1], base=16) << 8) ^ (2 ** 15)) + int(handover[0], base=16))
     command_data = handover[2:]
-    return command_id, command_data
+    
+    command_dict = {
+        "0x101": rSyncGetEPC
+    }
+    
+    rCommand = command_dict.get(command_id)
+    output = rCommand(command_data)
+    return output
+
+
+def rSyncGetEPC(command_data):
+    return command_data
+
 
 
 if __name__ == '__main__':
