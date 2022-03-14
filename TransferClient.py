@@ -10,7 +10,6 @@ def main():
     reader = "192.168.3.46"
     port = 4007
     buffer = 16384
-
     s = socket.socket()
     try:
         s.connect((reader, port))
@@ -18,11 +17,9 @@ def main():
             a = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]
             message = bytes(a)
             s.send(message)
-
             response = s.recv(buffer)
-            command_id, command_data = createResponseOutput(response)
-            print(f"Command {command_id} returned {command_data}")
-
+            response_data = createResponseOutput(response)
+            print(response_data)
             break
     except:
         print("Connection Failed!")
@@ -33,25 +30,56 @@ def main():
 
 def createResponseOutput(response):
     handover = [hex(int(i)) for i in response]
-    for i in range(0, 4, 1):
-        handover.pop(0)
-    handover.pop(-1)
-    handover.pop(-1)
+    handover = handover[4:]
     command_id = hex(((int(handover[1], base=16) << 8) ^ (2 ** 15)) + int(handover[0], base=16))
-    command_data = handover[2:]
-    
+    command_data = handover[2:]   
     command_dict = {
-        "0x101": rSyncGetEPC
-    }
-    
-    rCommand = command_dict.get(command_id)
-    output = rCommand(command_data)
+        "0x101": rSyncGetEPCs
+    }    
+    r_command = command_dict.get(command_id)
+    output = r_command(command_data)
     return output
 
 
-def rSyncGetEPC(command_data):
-    return command_data
-
+def rSyncGetEPCs(c_data):
+    tag_list = []
+    info = {"command":"SyncGetEPCs"}
+    if c_data[0] == "0x00":
+        info["error"] = "none"
+    elif c_data[0] == "0x0A":
+        info["error"] = "no_tag"
+    else:
+        info["error"] = c_data[0]
+    del c_data[0]
+    tag_list.append(info)       
+    if c_out["error"] == "none":
+        while True:
+            extended_result = {}
+            e_flag = int(c_data[0], base=16)
+            if e_flag == (e_flag | 2**0):
+                extended_result["port"] = c_data[1][-1]
+                del c_data[1]
+            if e_flag == (e_flag | 2**1):
+                extended_result["rssi"] = int(c_data[1], base=16)
+                del c_data[1]
+            if e_flag == (e_flag | 2**2):
+                extended_result["time"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4) + (int(c_data[3], base=16) << 8) + (int(c_data[4], base=16) << 12)
+                del c_data[1:5]
+            if e_flag == (e_flag | 2**3):
+                extended_result["pc"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4) + (int(c_data[3], base=16) << 8) + (int(c_data[4], base=16) << 12) + (int(c_data[5], base=16) << 16) + (int(c_data[6], base=16) << 20)
+                del c_data[1:7]
+            if e_flag == (e_flag | 2**4):
+                extended_result["frequency"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4) + (int(c_data[3], base=16) << 8)
+                del c_data[1:4]
+                extended_result["phase"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4)
+                del c_data[1:3]
+                
+                ### EPC ###
+                
+            tag_list.append(extended_result)
+            if c_data[1] == "0xaa" and c_data[2] == "0xcc":
+                break
+    return tag_list
 
 
 if __name__ == '__main__':
