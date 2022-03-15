@@ -14,8 +14,7 @@ def main():
     try:
         s.connect((reader, port))
         while True:
-            a = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]
-            message = bytes(a)
+            message = SyncGetEPCs()
             s.send(message)
             response = s.recv(buffer)
             response_data = createResponseOutput(response)
@@ -27,16 +26,21 @@ def main():
         s.close()
         print("Disconnected!")
 
+def SyncGetEPCs():
+    enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]
+    message = bytes(enc)
+    return message
+        
 
 def createResponseOutput(response):
     handover = [hex(int(i)) for i in response]
     handover = handover[4:]
     command_id = hex(((int(handover[1], base=16) << 8) ^ (2 ** 15)) + int(handover[0], base=16))
     command_data = handover[2:]   
-    command_dict = {
+    command_res_dict = {
         "0x101": rSyncGetEPCs
     }    
-    r_command = command_dict.get(command_id)
+    r_command = command_res_dict.get(command_id)
     output = r_command(command_data)
     return output
 
@@ -51,11 +55,11 @@ def rSyncGetEPCs(c_data):
     else:
         info["error"] = c_data[0]
     del c_data[0]
-    tag_list.append(info)       
+    tag_list.append(info)
+    e_flag = int(c_data[0], base=16)
     if c_out["error"] == "none":
         while True:
             extended_result = {}
-            e_flag = int(c_data[0], base=16)
             if e_flag == (e_flag | 2**0):
                 extended_result["port"] = c_data[1][-1]
                 del c_data[1]
@@ -72,10 +76,13 @@ def rSyncGetEPCs(c_data):
                 extended_result["frequency"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4) + (int(c_data[3], base=16) << 8)
                 del c_data[1:4]
                 extended_result["phase"] = int(c_data[1], base=16) + (int(c_data[2], base=16) << 4)
-                del c_data[1:3]
-                
-                ### EPC ###
-                
+                del c_data[1:3]                
+            epc_bytes = int(c_data[1], base=16) * 2
+            del c_data[1]
+            epc = 0
+            for i in range(1, epc_bytes+1, 1):
+                epc = epc + (int(c_data[epc_bytes-(i-1)], base=16) << ((i-1) * 4))
+            extended_result["epc"] = epc                
             tag_list.append(extended_result)
             if c_data[1] == "0xaa" and c_data[2] == "0xcc":
                 break
