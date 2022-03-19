@@ -31,13 +31,20 @@ def SyncGetEPCs():
     s.send(message)
     response = s.recv(buffer)
     output_data = createResponseOutput(response)
+    # output_data=[{"type": "tag", "time": 55, "rssi": 67, "epc": 243556},
+    #             {"type": "tag", "time": 65, "rssi": 87, "epc": 92834728}]
     x_plot = np.array([])
     y_plot = np.array([])
+    label_plot = np.array([]).astype('int64')
     for tag in output_data:
         if tag["type"] == "tag":
             x_plot = np.append(x_plot, tag["time"])
             y_plot = np.append(y_plot, tag["rssi"])
-    plt.scatter(x_plot, y_plot)
+            label_plot = np.append(label_plot, tag["epc"])
+    fig, ax = plt.subplots()
+    ax.scatter(x_plot, y_plot)
+    for i, label in enumerate(label_plot):
+        ax.annotate(label, (x_plot[i], y_plot[i]))
     plt.xlabel("Timestamp")
     plt.ylabel("RSSI Value")
     plt.show()
