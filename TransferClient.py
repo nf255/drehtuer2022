@@ -39,6 +39,7 @@ def SyncGetEPCs():
         s.send(message)
         response = s.recv(buffer)
         output_data = createResponseOutput(response)
+        print(i)
         # output_data=[{"type": "tag", "time": 55, "rssi": 67, "epc": 243556},
         #             {"type": "tag", "time": 65, "rssi": 87, "epc": 92834728}]
         x_plot = np.array([])
@@ -55,7 +56,10 @@ def SyncGetEPCs():
 
 
 def createResponseOutput(response):
-    handover = [hex(int(i)) for i in response]
+    handover = ["0x"+hex(int(i))[2:].zfill(2) for i in response]
+    for count, value in enumerate(handover):
+        if value == "0xaa" and handover[count+1] == "0xaa":
+            del handover[count]
     handover = handover[4:]
     command_id = hex(((int(handover[1], base=16) << 8) ^ (2 ** 15)) + int(handover[0], base=16))
     command_data = handover[2:]
@@ -70,9 +74,9 @@ def createResponseOutput(response):
 def rSyncGetEPCs(c_data):
     tag_list = []
     info = {"type": "info", "command": "SyncGetEPCs"}
-    if c_data[0] == "0x0":
+    if c_data[0] == "0x00":
         info["error"] = "none"
-    elif c_data[0] == "0xA":
+    elif c_data[0] == "0x0A":
         info["error"] = "no_tag"
     else:
         info["error"] = c_data[0]
@@ -81,6 +85,9 @@ def rSyncGetEPCs(c_data):
     e_flag = int(c_data[0], base=16)
     if info["error"] == "none":
         while True:
+            print(c_data)
+            if c_data[1] == "0xaa" and c_data[2] == "0xcc":
+                break
             extended_result = {"type": "tag"}
             if e_flag == (e_flag | 2 ** 0):
                 extended_result["port"] = c_data[1][-1]
@@ -105,14 +112,13 @@ def rSyncGetEPCs(c_data):
                 del c_data[1:3]
             epc_bytes = int(c_data[1], base=16) * 2
             del c_data[1]
-            epc = 0
+            epc = ""
             for i in range(1, epc_bytes + 1):
-                epc = epc + (int(c_data[(epc_bytes - (i - 1))], base=16) << ((i - 1) * 8))
+                epc = str(c_data[i][2:]) + epc
             del c_data[1:(epc_bytes + 1)]
-            extended_result["epc"] = hex(epc)
+            print(epc)
+            extended_result["epc"] = epc
             tag_list.append(extended_result)
-            if c_data[1] == "0xaa" and c_data[2] == "0xcc":
-                break
     return tag_list
 
 
