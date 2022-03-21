@@ -23,6 +23,7 @@ def clickConnect(reader):
         connection_status_label.config(text="Connection failed!", fg='#ff0000')
     else:
         connection_status_label.config(text="Connected to " + reader + "!", fg='#00db07')
+        connect_button.config(state=DISABLED)
         disconnect_button.config(state=NORMAL)
         button_SyncGetEPCs.config(state=NORMAL)
 
@@ -85,7 +86,6 @@ def rSyncGetEPCs(c_data):
     e_flag = int(c_data[0], base=16)
     if info["error"] == "none":
         while True:
-            print(c_data)
             if c_data[1] == "0xaa" and c_data[2] == "0xcc":
                 break
             extended_result = {"type": "tag"}
@@ -116,7 +116,6 @@ def rSyncGetEPCs(c_data):
             for i in range(1, epc_bytes + 1):
                 epc = str(c_data[i][2:]) + epc
             del c_data[1:(epc_bytes + 1)]
-            print(epc)
             extended_result["epc"] = epc
             tag_list.append(extended_result)
     return tag_list
@@ -131,9 +130,7 @@ buffer = 16384
 # Creating a Label Widget and a button
 reader_ip_label = Label(root, text="Reader IP:")
 reader_ip_entry = Entry(root, width=20)
-connect_button = Button(root, text="Connect",
-                        command=lambda: [clickConnect(reader_ip_entry.get()),
-                                         connect_button.config(state=DISABLED)])
+connect_button = Button(root, text="Connect", command=lambda: clickConnect(reader_ip_entry.get()))
 disconnect_button = Button(root, text="Disconnect",
                            command=lambda: [s.close(),
                                             connection_status_label.config(text="Disconnected!", fg='#ff0000'),
