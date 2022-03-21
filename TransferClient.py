@@ -40,7 +40,6 @@ def SyncGetEPCs():
         s.send(message)
         response = s.recv(buffer)
         output_data = createResponseOutput(response)
-        print(i)
         # output_data=[{"type": "tag", "time": 55, "rssi": 67, "epc": 243556},
         #             {"type": "tag", "time": 65, "rssi": 87, "epc": 92834728}]
         x_plot = np.array([])
