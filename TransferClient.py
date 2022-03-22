@@ -2,15 +2,32 @@ import socket
 from tkinter import *
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 
-# Dokumente:
+# Notes:
 #
 # S:\Entwicklung\Allgemein\Datenblätter\Kartentechnik\Kathrein\Programmierung\RRU4 API and Demo V2.56.00\API\Headers
 # S:\Entwicklung\Allgemein\Datenblätter\Kartentechnik\Kathrein\Programmierung
+# terminal: auto-py-to-exe
 
 
 def main():
+    reader_ip_label.grid(row=0, column=0, padx=8, pady=8)
+    reader_ip_entry.grid(row=0, column=1, padx=8, pady=8)
+    reader_ip_entry.insert(0, "192.168.3.46")
+    connect_button.grid(row=0, column=2, padx=8, pady=8)
+    disconnect_button.grid(row=0, column=3, padx=8, pady=8)
+    connection_status_label.grid(row=1, column=0, columnspan=4)
+    button_SyncGetEPCs_increasing_power.grid(row=2, column=0, padx=8, pady=8)
+    button_SyncGetEPCs_timer.grid(row=3, column=0, rowspan=2, padx=8, pady=8)
+    timer_time_entry_label.grid(row=3, column=1, padx=8, pady=8)
+    timer_time_entry.grid(row=4, column=1, padx=8, pady=8)
+    timer_time_entry.insert(0, 10)
+    timer_power_entry_label.grid(row=3, column=2, padx=8, pady=8)
+    timer_power_entry.grid(row=4, column=2, padx=8, pady=8)
+    timer_power_entry.insert(0, 20.0)
+    timer_alert_label.grid(row=5, column=0, columnspan=4, padx=8, pady=8)
     root.mainloop()
 
 
@@ -25,34 +42,76 @@ def clickConnect(reader):
         connection_status_label.config(text="Connected to " + reader + "!", fg='#00db07')
         connect_button.config(state=DISABLED)
         disconnect_button.config(state=NORMAL)
-        button_SyncGetEPCs.config(state=NORMAL)
+        button_SyncGetEPCs_increasing_power.config(state=NORMAL)
+        button_SyncGetEPCs_timer.config(state=NORMAL)
 
 
-def SyncGetEPCs():
+def SyncGetEPCs(mode, timer_time, timer_power):
     # enc = [0xaa, 0xbb, 0x01, 0x01, 0x19, 0x00, 0x17, 0xaa, 0xcc] # Extended Result Flag
-    for i in range(24, 137):
-        enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, 0x04, i, 0xaa, 0xcc]  # SetPortPower
-        message = bytes(enc)
-        s.send(message)
-        placeholder = s.recv(buffer)
-        enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]  # SyncGetEPCs
-        message = bytes(enc)
-        s.send(message)
-        response = s.recv(buffer)
-        output_data = createResponseOutput(response)
-        # output_data=[{"type": "tag", "time": 55, "rssi": 67, "epc": 243556},
-        #             {"type": "tag", "time": 65, "rssi": 87, "epc": 92834728}]
-        x_plot = np.array([])
-        y_plot = np.array([])
-        label_plot = np.array([]).astype('int64')
-        for tag in output_data:
-            if tag["type"] == "tag":
-                x_plot = np.append(x_plot, i / 4)
-                y_plot = np.append(y_plot, tag["rssi"])
-        plt.plot(x_plot, y_plot, marker='o')
-    plt.xlabel("Port Power in dBm")
-    plt.ylabel("RSSI Value")
-    plt.show()
+    if mode == "power":
+        plot_data = {}
+        for i in range(24, 137):
+            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, 0x04, i, 0xaa, 0xcc]  # SetPortPower
+            message = bytes(enc)
+            s.send(message)
+            placeholder = s.recv(buffer)
+            enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]  # SyncGetEPCs
+            message = bytes(enc)
+            s.send(message)
+            response = s.recv(buffer)
+            output_data = createResponseOutput(response)
+            for tag in output_data:
+                if tag["type"] == "tag":
+                    if tag["epc"] not in plot_data:
+                        plot_data[tag["epc"]] = np.zeros((2, 113))
+                        plot_data[tag["epc"]][0] = [power / 4 for power in range(24, 137)]
+                    plot_data[tag["epc"]][1][i - 24] = tag["rssi"]
+        for key, value in plot_data.items():
+            plt.plot(value[0], value[1], label=key[20:])
+        plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+        plt.xlabel("Port Power in dBm")
+        plt.ylabel("RSSI Value")
+        plt.title("Tag detection from 6 dBm to 34 dBm")
+        plt.tight_layout()
+        plt.show()
+
+    elif mode == "timer":
+        if 6 <= timer_power <= 34:
+            plot_data = {}
+            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, 0x04, int(timer_power * 4), 0xaa, 0xcc]  # SetPortPower
+            message = bytes(enc)
+            s.send(message)
+            placeholder = s.recv(buffer)
+            process_time = time.perf_counter()
+            while time.perf_counter() - process_time < timer_time:
+                enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]  # SyncGetEPCs
+                message = bytes(enc)
+                s.send(message)
+                response = s.recv(buffer)
+                output_data = createResponseOutput(response)
+                epc_out_list = []
+                for tag in output_data:
+                    if tag["type"] == "tag":
+                        if tag["epc"] not in plot_data:
+                            plot_data[tag["epc"]] = [[], []]
+                        plot_data[tag["epc"]][0].append(time.perf_counter() - process_time)
+                        plot_data[tag["epc"]][1].append(tag["rssi"])
+                        epc_out_list.append(tag["epc"])
+                for epc in plot_data:
+                    if epc not in epc_out_list:
+                        plot_data[epc][0].append(time.perf_counter() - process_time)
+                        plot_data[epc][1].append(0)
+                time.sleep(0.1)
+            for key, value in plot_data.items():
+                plt.plot(value[0], value[1], label=key[20:])
+            plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+            plt.xlabel("Time in Seconds")
+            plt.ylabel("RSSI Value")
+            plt.title("Tag detection for " + str(timer_time) + " Seconds with " + str(timer_power) + " dBm")
+            plt.tight_layout()
+            plt.show()
+        else:
+            timer_alert_label.config(text="6 dBm <= Power <= 34 dBm!")
 
 
 def createResponseOutput(response):
@@ -130,26 +189,32 @@ buffer = 16384
 reader_ip_label = Label(root, text="Reader IP:")
 reader_ip_entry = Entry(root, width=20)
 connect_button = Button(root, text="Connect", command=lambda: clickConnect(reader_ip_entry.get()))
-disconnect_button = Button(root, text="Disconnect",
+disconnect_button = Button(root,
+                           text="Disconnect",
                            command=lambda: [s.close(),
                                             connection_status_label.config(text="Disconnected!", fg='#ff0000'),
                                             disconnect_button.config(state=DISABLED),
                                             connect_button.config(state=NORMAL),
-                                            button_SyncGetEPCs.config(state=DISABLED)],
+                                            button_SyncGetEPCs_increasing_power.config(state=DISABLED),
+                                            button_SyncGetEPCs_timer.config(state=DISABLED)],
                            state=DISABLED)
 connection_status_label = Label(root, text="")
-button_SyncGetEPCs = Button(root, text="SyncGetEPCs", command=SyncGetEPCs, state=DISABLED)
-label_SyncGetEPCs = Label(root, text="")
+button_SyncGetEPCs_increasing_power = Button(root,
+                                             text="Increasing Power",
+                                             command=lambda: SyncGetEPCs("power", 0, 0),
+                                             state=DISABLED)
+button_SyncGetEPCs_timer = Button(root,
+                                  text="Timer",
+                                  command=lambda: SyncGetEPCs("timer",
+                                                              int(timer_time_entry.get()),
+                                                              round(float(timer_power_entry.get()) * 4) / 4),
+                                  state=DISABLED)
+timer_time_entry_label = Label(root, text="Time (s):")
+timer_time_entry = Entry(root, width=8)
+timer_power_entry_label = Label(root, text="Power (dBm):")
+timer_power_entry = Entry(root, width=8)
+timer_alert_label = Label(root, text="", fg='#ff0000')
 
-# Shoving elements onto the screen
-reader_ip_label.grid(row=0, column=0, padx=10, pady=10)
-reader_ip_entry.grid(row=0, column=1, padx=10, pady=10)
-reader_ip_entry.insert(0, "192.168.3.46")
-connect_button.grid(row=0, column=2, padx=10, pady=10)
-disconnect_button.grid(row=0, column=3, padx=10, pady=10)
-connection_status_label.grid(row=1, column=0, columnspan=4)
-button_SyncGetEPCs.grid(row=2, column=0, padx=10, pady=10)
-label_SyncGetEPCs.grid(row=3, column=0, columnspan=4)
 
 if __name__ == '__main__':
     main()
