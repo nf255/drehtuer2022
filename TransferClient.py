@@ -83,10 +83,11 @@ def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
         placeholder = s.recv(buffer)
         plot_data = {}
         for i in range(24, 137):
-            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, 0x04, i, 0xaa, 0xcc]  # SetPortPower
-            message = bytes(enc)
-            s.send(message)
-            placeholder = s.recv(buffer)
+            for port_number in range(1, 5):
+                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, i, 0xaa, 0xcc]  # SetPortPower
+                message = bytes(enc)
+                s.send(message)
+                placeholder = s.recv(buffer)
             enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]  # SyncGetEPCs
             message = bytes(enc)
             s.send(message)
@@ -110,10 +111,11 @@ def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
     elif mode == "timer":
         if 6 <= timer_power <= 34:
             plot_data = {}
-            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, 0x04, int(timer_power * 4), 0xaa, 0xcc]  # SetPortPower
-            message = bytes(enc)
-            s.send(message)
-            placeholder = s.recv(buffer)
+            for port_number in range(1, 5):
+                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa, 0xcc]  # SetPortPower
+                message = bytes(enc)
+                s.send(message)
+                placeholder = s.recv(buffer)
             loop_counter = 0
             process_time = time.perf_counter()
             while time.perf_counter() - process_time < timer_time:
