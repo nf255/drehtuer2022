@@ -77,14 +77,10 @@ def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
     s.send(message)
     placeholder = s.recv(buffer)
     if mode == "power":
-        enc = [0xaa, 0xbb, 0x01, 0x01, 0x02, 0x00, 0x00, 0xaa, 0xcc]  # SetMode (to NormalMode)
-        message = bytes(enc)
-        s.send(message)
-        placeholder = s.recv(buffer)
         plot_data = {}
-        for i in range(24, 137):
+        for port_power_value in range(24, 137):
             for port_number in range(1, 5):
-                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, i, 0xaa, 0xcc]  # SetPortPower
+                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, port_power_value, 0xaa, 0xcc]  # SetPortPower
                 message = bytes(enc)
                 s.send(message)
                 placeholder = s.recv(buffer)
@@ -98,7 +94,7 @@ def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
                     if tag["epc"] not in plot_data:
                         plot_data[tag["epc"]] = np.zeros((2, 113))
                         plot_data[tag["epc"]][0] = [power / 4 for power in range(24, 137)]
-                    plot_data[tag["epc"]][1][i - 24] = tag["rssi"]
+                    plot_data[tag["epc"]][1][port_power_value - 24] = tag["rssi"]
         for key, value in plot_data.items():
             plt.plot(value[0], value[1], label=key[20:])
         plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')

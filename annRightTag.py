@@ -31,14 +31,18 @@ for index in range(len(ann_dataset_dict)):
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.linear1 = nn.Linear(51, 30)
-        self.linear2 = nn.Linear(30, 15)
-        self.linear3 = nn.Linear(15, 2)
+        self.linear1 = nn.Linear(51, 50)
+        self.linear2 = nn.Linear(50, 48)
+        self.linear3 = nn.Linear(48, 46)
+        self.linear4 = nn.Linear(46, 44)
+        self.linear5 = nn.Linear(44, 2)
 
     def forward(self, data):
         data = F.relu(self.linear1(data))
         data = F.relu(self.linear2(data))
-        data = self.linear3(data)
+        data = F.relu(self.linear3(data))
+        data = F.relu(self.linear4(data))
+        data = self.linear5(data)
         return torch.sigmoid(data)
 
 
@@ -95,13 +99,13 @@ def test():
 
 
 test_best_result = 0
-for epoch in range(0, 100):
-    optimizer = optim.Adam(model.parameters(), lr=0.01 - epoch * 0.0001)
+for epoch in range(0, 50):
+    optimizer = optim.Adam(model.parameters(), lr=0.001)  # lr=0.01 - epoch * 0.0001
     train(epoch)
     print("Epoche ", epoch, "abgeschlossen!")
     test_result = test()
     if test_result > test_best_result:
-        torch.save(model, 'savedNet.pt')
+        # torch.save(model, 'savedNet.pt')
         print("save..... \n")
         test_best_result = test_result
 
