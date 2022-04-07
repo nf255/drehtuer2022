@@ -56,22 +56,33 @@ def clickConnect(reader):
         button_SyncGetEPCs_ann.config(state=NORMAL)
 
 
-def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
-    try:
-        timer_time = int(round(float(timer_time)))
-    except:
-        timer_alert_label.config(text="Invalid Time Input!")
-        return
-    try:
-        timer_power = round(float(timer_power) * 4) / 4
-    except:
-        timer_alert_label.config(text="Invalid Power Input!")
-        return
-    try:
-        timer_threshold = int(round(float(timer_threshold)))
-    except:
-        # timer_alert_label.config(text="Invalid RSSI Input!")
-        timer_threshold = 0
+def SyncGetEPCs(mode, **kwargs):
+    timer_power, timer_time, value_mode = 0, 0, ""
+    for key, value in kwargs.items():
+        if key == "value_mode":
+            value_mode = value
+        elif key == "timer_time":
+            timer_time = value
+            try:
+                timer_time = int(round(float(timer_time)))
+            except:
+                timer_alert_label.config(text="Invalid Time Input!")
+                return
+        elif key == "timer_power":
+            timer_power = value
+            try:
+                timer_power = round(float(timer_power) * 4) / 4
+            except:
+                timer_alert_label.config(text="Invalid Power Input!")
+                return
+        elif key == "timer_threshold":
+            timer_threshold = value
+            try:
+                timer_threshold = int(round(float(timer_threshold)))
+            except:
+                # timer_alert_label.config(text="Invalid RSSI Input!")
+                timer_threshold = 0
+
     enc = [0xaa, 0xbb, 0x01, 0x01, 0x19, 0x00, 0x17, 0xaa, 0xcc]  # Extended Result Flag
     message = bytes(enc)
     s.send(message)
@@ -105,10 +116,14 @@ def SyncGetEPCs(mode, value_mode, timer_time, timer_power, timer_threshold):
         plt.show()
 
     elif mode == "timer":
+        if timer_time == 0 or timer_power == 0:
+            timer_alert_label.config(text="Invalid Input!")
+            return
         if 6 <= timer_power <= 34:
             plot_data = {}
             for port_number in range(1, 5):
-                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa, 0xcc]  # SetPortPower
+                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa,
+                       0xcc]  # SetPortPower
                 message = bytes(enc)
                 s.send(message)
                 placeholder = s.recv(buffer)
@@ -255,28 +270,28 @@ ttk.Separator(root, orient=HORIZONTAL).grid(row=2, column=0, columnspan=5, stick
 button_SyncGetEPCs_rssi_timer = Button(root,
                                        text="RSSI Determination",
                                        command=lambda: SyncGetEPCs("timer",
-                                                                   "rssi",
-                                                                   timer_time_entry.get(),
-                                                                   timer_power_entry.get(),
-                                                                   timer_rssi_threshold_entry.get()),
+                                                                   value_mode="rssi",
+                                                                   timer_time=timer_time_entry.get(),
+                                                                   timer_power=timer_power_entry.get(),
+                                                                   timer_threshold=timer_rssi_threshold_entry.get()),
                                        state=DISABLED)
 button_SyncGetEPCs_phase_timer = Button(root,
                                         text="Phase Determination",
                                         command=lambda: SyncGetEPCs("timer",
-                                                                    "phase",
-                                                                    timer_time_entry.get(),
-                                                                    timer_power_entry.get(),
-                                                                    timer_rssi_threshold_entry.get()),
+                                                                    value_mode="phase",
+                                                                    timer_time=timer_time_entry.get(),
+                                                                    timer_power=timer_power_entry.get(),
+                                                                    timer_threshold=timer_rssi_threshold_entry.get()),
                                         state=DISABLED)
 button_SyncGetEPCs_ann = Button(root,
                                 text="ANN Data",
                                 command=lambda: [timer_time_entry.delete(0, END),
                                                  timer_time_entry.insert(0, 10),
                                                  SyncGetEPCs("timer",
-                                                             "ann",
-                                                             timer_time_entry.get(),
-                                                             timer_power_entry.get(),
-                                                             timer_rssi_threshold_entry.get())],
+                                                             value_mode="ann",
+                                                             timer_time=timer_time_entry.get(),
+                                                             timer_power=timer_power_entry.get(),
+                                                             timer_threshold=timer_rssi_threshold_entry.get())],
                                 state=DISABLED)
 timer_time_entry_label = Label(root, text="Time (s):")
 timer_time_entry = Entry(root, width=8)
@@ -287,8 +302,9 @@ timer_rssi_threshold_entry = Entry(root, width=8, state=DISABLED)
 timer_alert_label = Label(root, text="", fg='#ff0000')
 button_SyncGetEPCs_increasing_power = Button(root,
                                              text="Increasing Power Mode",
-                                             command=lambda: SyncGetEPCs("power", "", 0, 0,
-                                                                         timer_rssi_threshold_entry.get()),
+                                             command=lambda: SyncGetEPCs("power",
+                                                                         value_mode="",
+                                                                         timer_threshold=timer_rssi_threshold_entry.get()),
                                              state=DISABLED)
 
 if __name__ == '__main__':
