@@ -49,6 +49,7 @@ class Net(nn.Module):
 model = Net()
 #  model.cuda()
 
+
 if os.path.isfile('savedNet.pt'):
     model = torch.load('savedNet.pt', map_location=torch.device('cpu'))  # , map_location=torch.device('cpu')
 
@@ -100,7 +101,7 @@ def test():
 
 test_best_result = 0
 for epoch in range(0, 50):
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # lr=0.01 - epoch * 0.0001
+    optimizer = optim.Adam(model.parameters(), lr=0.002)  # lr=0.01 - epoch * 0.0001
     train(epoch)
     print("Epoche ", epoch, "abgeschlossen!")
     test_result = test()

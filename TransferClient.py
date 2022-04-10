@@ -136,6 +136,7 @@ def SyncGetEPCs(mode, **kwargs):
                 message = bytes(enc)
                 s.send(message)
                 response = s.recv(buffer)
+                print(response)
                 output_data = createResponseOutput(response)
                 epc_out_list = []
                 for tag in output_data:
@@ -158,10 +159,6 @@ def SyncGetEPCs(mode, **kwargs):
                 plt.title("Tag detection for " + str(timer_time) + " Seconds with " + str(timer_power) + " dBm")
                 plt.tight_layout()
                 plt.show()
-                enc = [0xaa, 0xbb, 0x01, 0x01, 0x02, 0x00, 0x00, 0xaa, 0xcc]  # SetMode (to NormalMode)
-                message = bytes(enc)
-                s.send(message)
-                placeholder = s.recv(buffer)
             else:
                 try:
                     ann_dataset_file = open("annDatasetTrain.json", "r")
@@ -246,7 +243,7 @@ def rSyncGetEPCs(c_data):
 
 
 root = Tk()
-root.title("KBRP V2 Test")
+root.title("Kathrein-Test")
 
 s = socket.socket()
 buffer = 16384
@@ -303,7 +300,6 @@ timer_alert_label = Label(root, text="", fg='#ff0000')
 button_SyncGetEPCs_increasing_power = Button(root,
                                              text="Increasing Power Mode",
                                              command=lambda: SyncGetEPCs("power",
-                                                                         value_mode="",
                                                                          timer_threshold=timer_rssi_threshold_entry.get()),
                                              state=DISABLED)
 
