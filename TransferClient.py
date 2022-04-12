@@ -58,6 +58,7 @@ def clickConnect(reader):
 
 def SyncGetEPCs(mode, **kwargs):
     timer_power, timer_time, value_mode = 0, 0, ""
+    port_number = 4
     for key, value in kwargs.items():
         if key == "value_mode":
             value_mode = value
@@ -82,7 +83,6 @@ def SyncGetEPCs(mode, **kwargs):
             except:
                 # timer_alert_label.config(text="Invalid RSSI Input!")
                 timer_threshold = 0
-
     enc = [0xaa, 0xbb, 0x01, 0x01, 0x19, 0x00, 0x17, 0xaa, 0xcc]  # Extended Result Flag
     message = bytes(enc)
     s.send(message)
@@ -90,11 +90,15 @@ def SyncGetEPCs(mode, **kwargs):
     if mode == "power":
         plot_data = {}
         for port_power_value in range(24, 137):
-            for port_number in range(1, 5):
-                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, port_power_value, 0xaa, 0xcc]  # SetPortPower
-                message = bytes(enc)
-                s.send(message)
-                placeholder = s.recv(buffer)
+            # for port_number in range(1, 5):
+            #    enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, port_power_value, 0xaa, 0xcc]  # SetPortPower
+            #    message = bytes(enc)
+            #    s.send(message)
+            #    placeholder = s.recv(buffer)
+            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, port_power_value, 0xaa, 0xcc]  # SetPortPower
+            message = bytes(enc)
+            s.send(message)
+            placeholder = s.recv(buffer)
             enc = [0xaa, 0xbb, 0x01, 0x01, 0x01, 0x01, 0xaa, 0xcc]  # SyncGetEPCs
             message = bytes(enc)
             s.send(message)
@@ -121,12 +125,16 @@ def SyncGetEPCs(mode, **kwargs):
             return
         if 6 <= timer_power <= 34:
             plot_data = {}
-            for port_number in range(1, 5):
-                enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa,
-                       0xcc]  # SetPortPower
-                message = bytes(enc)
-                s.send(message)
-                placeholder = s.recv(buffer)
+            enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa, 0xcc]  # SetPortPower
+            message = bytes(enc)
+            s.send(message)
+            placeholder = s.recv(buffer)
+            # for port_number in range(1, 5):
+            #    enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_number, int(timer_power * 4), 0xaa,
+            #           0xcc]  # SetPortPower
+            #    message = bytes(enc)
+            #    s.send(message)
+            #    placeholder = s.recv(buffer)
             loop_counter = 0
             process_time = time.perf_counter()
             while time.perf_counter() - process_time < timer_time:
@@ -142,8 +150,13 @@ def SyncGetEPCs(mode, **kwargs):
                 for tag in output_data:
                     if tag["type"] == "tag":
                         if tag["epc"] not in plot_data:
-                            plot_data[tag["epc"]] = [[step / 5 for step in range(0, (timer_time * 5) + 1)],
-                                                     [0 for step in range(0, (timer_time * 5) + 1)]]
+                            # plot_data[tag["epc"]] = [([port],
+                            #                           [step / 5 for step in range(0, (timer_time * 5) + 1)],
+                            #                           [0 for step in range(0, (timer_time * 5) + 1)]) for port in
+                            #                          range(1, 5)]
+                            plot_data[tag["epc"]] = [
+                                [step / 5 for step in range(0, (timer_time * 5) + 1)],
+                                [0 for step in range(0, (timer_time * 5) + 1)]]
                         if value_mode != "ann":
                             plot_data[tag["epc"]][1][loop_counter] = tag[value_mode]
                         else:
@@ -174,6 +187,11 @@ def SyncGetEPCs(mode, **kwargs):
                 ann_dataset_file.close()
         else:
             timer_alert_label.config(text="6 dBm <= Power <= 34 dBm!")
+    for port_i in range(1, 5):
+        enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_i, 0x00, 0xaa, 0xcc]  # SetPortPower
+        message = bytes(enc)
+        s.send(message)
+        placeholder = s.recv(buffer)
 
 
 def createResponseOutput(response):
@@ -189,7 +207,11 @@ def createResponseOutput(response):
         "0x21e": rSyncGetEPCs
     }
     r_command = command_res_dict.get(command_id)
-    output = r_command(command_data)
+    try:
+        output = r_command(command_data)
+    except:
+        timer_alert_label.config(text="Unexpected Error!")
+        return 0
     return output
 
 
