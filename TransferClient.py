@@ -83,6 +83,11 @@ def SyncGetEPCs(mode, **kwargs):
             except:
                 # timer_alert_label.config(text="Invalid RSSI Input!")
                 timer_threshold = 0
+    for port_i in range(1, 5):
+        enc = [0xaa, 0xbb, 0x01, 0x01, 0x06, 0x00, port_i, 0x00, 0xaa, 0xcc]  # SetPortPower
+        message = bytes(enc)
+        s.send(message)
+        placeholder = s.recv(buffer)
     enc = [0xaa, 0xbb, 0x01, 0x01, 0x19, 0x00, 0x17, 0xaa, 0xcc]  # Extended Result Flag
     message = bytes(enc)
     s.send(message)
